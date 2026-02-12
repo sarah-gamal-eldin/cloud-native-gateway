@@ -55,12 +55,12 @@ cd cloud-native-gateway
 
 Just open index.html in your browser, or run the local server:
 
-# Option A: Python HTTP server (recommended)
+#### Option A: Python HTTP server (recommended)
 ```bash
 python3 cors-server.py
 ```
 
-# Option B: Node.js server (HTTPS with COOP/COEP)
+#### Option B: Node.js server (HTTPS with COOP/COEP)
 ```bash
 npm install
 node server.js
