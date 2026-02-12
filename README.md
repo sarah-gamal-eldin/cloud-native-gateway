@@ -18,8 +18,6 @@ macOS Native · Dark Edition · Zero Server Required
 | **Shapefile** (.zip) | ✅ Full | Multi-layer support, auto-merges |
 | **GeoJSON** (.geojson/.json) | ✅ Full | FeatureCollection & single features |
 | **CSV** (.csv) | ✅ Full | Auto-detects lat/lon columns (lat/lng/x/y) |
-| **GeoPackage** (.gpkg) | ✅ GDAL | Requires GDAL mode |
-| **GeoTIFF** (.tif/.tiff) | ✅ GDAL | Exports as Cloud-Optimized GeoTIFF |
 
 ### 🚀 **Output Formats** (Cloud-Native Only - No GeoJSON)
 | Format | Extension | Description |
@@ -41,7 +39,6 @@ macOS Native · Dark Edition · Zero Server Required
 
 ## 🖥️ **System Requirements**
 
-- **macOS** 11.0+ (Big Sur) - Intel or Apple Silicon
 - **Python** 3.7+ (for local server, optional)
 - **Modern browser** - Safari, Chrome, Firefox, Edge
 
