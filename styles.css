@@ -1,0 +1,204 @@
+/* macOS-native styling - matches system appearance */
+:root {
+    --macos-bg: #f5f5f7;
+    --macos-card: #ffffff;
+    --macos-accent: #0066cc;
+    --macos-border: rgba(0,0,0,0.1);
+    --macos-shadow: 0 8px 16px rgba(0,0,0,0.04);
+    --macos-text: #1d1d1f;
+    --macos-secondary: #86868b;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--macos-bg);
+    color: var(--macos-text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: var(--macos-secondary);
+}
+
+.mac-badge {
+    background: rgba(0,102,204,0.1);
+    color: var(--macos-accent);
+    padding: 0.2rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+/* Upload area - macOS style */
+.upload-area {
+    background: var(--macos-card);
+    border: 2px dashed var(--macos-border);
+    border-radius: 16px;
+    padding: 3rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--macos-shadow);
+}
+
+.upload-area:hover {
+    border-color: var(--macos-accent);
+    background: rgba(0,102,204,0.02);
+}
+
+.upload-area.dragover {
+    border-color: var(--macos-accent);
+    background: rgba(0,102,204,0.05);
+    transform: scale(1.02);
+}
+
+.upload-content .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.file-input {
+    display: none;
+}
+
+.button {
+    padding: 0.6rem 1.5rem;
+    border-radius: 20px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    margin: 0.5rem;
+}
+
+.button.primary {
+    background: var(--macos-accent);
+    color: white;
+}
+
+.button.primary:hover {
+    background: #004c99;
+    transform: translateY(-1px);
+}
+
+.button.secondary {
+    background: rgba(0,0,0,0.05);
+    color: var(--macos-text);
+}
+
+.button.secondary:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+/* Status panel */
+.status-panel {
+    background: var(--macos-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    box-shadow: var(--macos-shadow);
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.status-indicator {
+    font-size: 1.2rem;
+}
+
+.progress-bar {
+    height: 4px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--macos-accent);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* Output panel */
+.output-panel {
+    background: var(--macos-card);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-top: 1.5rem;
+    box-shadow: var(--macos-shadow);
+}
+
+.output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.file-badge {
+    background: #34c759;
+    color: white;
+    padding: 0.2rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.download-section, .publish-section {
+    margin-bottom: 2rem;
+}
+
+.download-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.map-preview {
+    margin-top: 1.5rem;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--macos-border);
+}
+
+.map-url {
+    padding: 1rem;
+    background: rgba(0,0,0,0.02);
+    border-top: 1px solid var(--macos-border);
+    word-break: break-all;
+    font-size: 0.85rem;
+}

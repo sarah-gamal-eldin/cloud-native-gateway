@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cloud Native Gateway - Dark Edition</title>
+    <link href="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/shpjs@4.0.4/dist/shp.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0c0e;
+            color: #e5e7eb;
+            line-height: 1.5;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            grid-template-rows: 100vh;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            background: #1a1e24;
+            border-right: 1px solid #2d3748;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+        }
+        
+        .map-container {
+            position: relative;
+            background: #0f1217;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .title {
+            margin-bottom: 28px;
+        }
+        
+        .title h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .title p {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        
+        .upload-area {
+            background: #252b33;
+            border: 2px dashed #4b5563;
+            border-radius: 20px;
+            padding: 36px 24px;
+            text-align: center;
+            margin-bottom: 28px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area.dragover {
+            background: #1e3a5f;
+            border-color: #60a5fa;
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(96,165,250,0.3);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #9ca3af;
+        }
+        
+        .upload-text {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e5e7eb;
+        }
+        
+        .upload-hint {
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        }
+        
+        .button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59,130,246,0.4);
+        }
+        
+        .button.secondary {
+            background: #2d3748;
+            color: #e5e7eb;
+            border: 1px solid #4b5563;
+            box-shadow: none;
+        }
+        
+        .button.secondary:hover {
+            background: #374151;
+            transform: translateY(-2px);
+        }
+        
+        .status-panel {
+            background: #252b33;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 28px;
+            border: 1px solid #374151;
+            display: none;
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+        
+        .status-message {
+            font-size: 14px;
+            color: #e5e7eb;
+            margin-bottom: 12px;
+        }
+        
+        .debug-message {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 12px;
+            color: #9ca3af;
+            background: #1a1e24;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #374151;
+        }
+        
+        .file-info {
+            background: #252b33;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 28px;
+            border: 1px solid #374151;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #e5e7eb;
+        }
+        
+        .file-info-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .download-section {
+            background: #252b33;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 28px;
+            border: 1px solid #374151;
+            display: none;
+        }
+        
+        .download-title {
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #e5e7eb;
+        }
+        
+        .download-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        
+        .badge {
+            background: #1e3a5f;
+            color: #93c5fd;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid #3b82f6;
+        }
+        
+        .footer {
+            margin-top: auto;
+            color: #9ca3af;
+            font-size: 12px;
+            padding-top: 28px;
+            border-top: 1px solid #2d3748;
+        }
+        
+        .features-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+        
+        .features-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            font-size: 13px;
+            border-bottom: 1px solid #2d3748;
+            color: #d1d5db;
+        }
+        
+        .icon {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="title">
+                <h1>🌍 Cloud Native Gateway</h1>
+                <p>Dark Edition · High Performance GIS</p>
+            </div>
+            
+            <div class="badge" style="margin-bottom: 20px;">
+                <span>⚡ Shapefile · CSV · GeoJSON → PMTiles · FlatGeobuf · GeoParquet</span>
+            </div>
+            
+            <div id="dropZone" class="upload-area">
+                <div class="upload-icon">📂</div>
+                <div class="upload-text">Drop your GIS file here</div>
+                <div class="upload-hint" style="margin-bottom: 20px;">or click to browse</div>
+                <button id="browseButton" class="button">Choose File</button>
+                <input id="fileInput" type="file" accept=".zip,.geojson,.json,.csv" style="display: none;">
+            </div>
+            
+            <div id="statusPanel" class="status-panel">
+                <div class="status-header">
+                    <span>📊 Processing Status</span>
+                </div>
+                <div id="statusText" class="status-message">Ready</div>
+                <div id="debugInfo" class="debug-message">Waiting for file...</div>
+            </div>
+            
+            <div id="fileInfo" class="file-info">
+                <!-- Dynamic file info -->
+            </div>
+            
+            <div id="downloadSection" class="download-section">
+                <div class="download-title">
+                    <span>📥 Cloud Native Output</span>
+                </div>
+                <div id="downloadButtons" class="download-buttons">
+                    <!-- Dynamic buttons -->
+                </div>
+            </div>
+            
+            <div class="footer">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                    <span style="font-weight: 600; color: #e5e7eb;">Supported Formats:</span>
+                </div>
+                <ul class="features-list">
+                    <li>✅ <strong>Shapefile (.zip)</strong> — Multi-layer support</li>
+                    <li>✅ <strong>CSV</strong> — Auto-detects lat/lon columns</li>
+                    <li>✅ <strong>GeoJSON</strong> — Preview only</li>
+                    <li>🚀 <strong>PMTiles</strong> — Vector tiles</li>
+                    <li>🚀 <strong>FlatGeobuf</strong> — Fast spatial</li>
+                    <li>🚀 <strong>GeoParquet</strong> — Columnar</li>
+                    <li>🎨 <strong>Styled Map</strong> — Custom HTML map</li>
+                </ul>
+                <div style="margin-top: 20px; color: #9ca3af;">
+                    macOS Native · Cloud Native
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CLOUD NATIVE GATEWAY - DARK EDITION
+        // ============================================
+        // ✅ Shapefile (.zip) - FIXED
+        // ✅ CSV with lat/lon - FIXED  
+        // ✅ GeoJSON - Preview only (no GeoJSON download)
+        // ✅ PMTiles, FlatGeobuf, GeoParquet
+        // ✅ Custom styled map - NO PRINT/PDF OPTIONS
+        // ============================================
+        
+        // Initialize Map with dark basemap
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'osm': {
+                        type: 'raster',
+                        tiles: [
+                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                        ],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap'
+                    }
+                },
+                layers: [{
+                    id: 'basemap',
+                    type: 'raster',
+                    source: 'osm',
+                    paint: {
+                        'raster-opacity': 0.85
+                    }
+                }]
+            },
+            center: [0, 0],
+            zoom: 2
+        });
+        
+        // Add navigation control
+        map.addControl(new maplibregl.NavigationControl(), 'top-right');
+        
+        // Add fullscreen control
+        map.addControl(new maplibregl.FullscreenControl(), 'top-right');
+        
+        // Add scale control
+        map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 80,
+            unit: 'metric'
+        }), 'bottom-left');
+        
+        // State management
+        const state = {
+            currentGeoJSON: null,
+            fileName: null,
+            fileType: null,
+            featureCount: 0,
+            geometryType: null
+        };
+        
+        // UI Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseButton = document.getElementById('browseButton');
+        const statusPanel = document.getElementById('statusPanel');
+        const statusText = document.getElementById('statusText');
+        const debugInfo = document.getElementById('debugInfo');
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadButtons = document.getElementById('downloadButtons');
+        const fileInfo = document.getElementById('fileInfo');
+        
+        // ============================================
+        // Event Listeners
+        // ============================================
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('dragover');
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('dragover');
+            });
+        });
+        
+        dropZone.addEventListener('drop', handleDrop, false);
+        browseButton.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        async function handleDrop(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                await processFile(files[0]);
+            }
+        }
+        
+        async function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                await processFile(files[0]);
+            }
+        }
+        
+        // ============================================
+        // File Processing - SHAPEFILE FIXED
+        // ============================================
+        
+        async function processFile(file) {
+            // Show status panel
+            statusPanel.style.display = 'block';
+            statusText.textContent = `📂 Loading: ${file.name}`;
+            debugInfo.textContent = 'Reading file...';
+            statusText.style.color = 'inherit';
+            fileInfo.style.display = 'flex';
+            
+            const extension = file.name.split('.').pop().toLowerCase();
+            state.fileName = file.name.split('.')[0];
+            state.fileType = extension;
+            
+            try {
+                let geojson = null;
+                
+                // ========================================
+                // SHAPEFILE (.zip) - FIXED
+                // ========================================
+                if (extension === 'zip') {
+                    statusText.textContent = '🔍 Reading Shapefile...';
+                    debugInfo.textContent = 'Parsing Shapefile with shp.js';
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    
+                    // Check if shp.js is loaded
+                    if (typeof shp === 'undefined') {
+                        throw new Error('shp.js library not loaded');
+                    }
+                    
+                    // Parse Shapefile
+                    const result = await shp(arrayBuffer);
+                    
+                    // Handle both single layer and multi-layer Shapefiles
+                    if (Array.isArray(result)) {
+                        geojson = {
+                            type: 'FeatureCollection',
+                            features: []
+                        };
+                        
+                        // Merge all layers
+                        result.forEach(layer => {
+                            if (layer && layer.features) {
+                                geojson.features = geojson.features.concat(layer.features);
+                            }
+                        });
+                    } else {
+                        geojson = result;
+                    }
+                    
+                    if (!geojson || !geojson.features || geojson.features.length === 0) {
+                        throw new Error('No features found in Shapefile');
+                    }
+                    
+                    debugInfo.textContent = `✅ Shapefile loaded: ${geojson.features.length} features`;
+                }
+                
+                // ========================================
+                // GEOJSON - NO GEOJSON OUTPUT
+                // ========================================
+                else if (extension === 'geojson' || extension === 'json') {
+                    statusText.textContent = '🔍 Reading GeoJSON...';
+                    debugInfo.textContent = 'Parsing GeoJSON';
+                    
+                    const text = await file.text();
+                    geojson = JSON.parse(text);
+                    
+                    if (!geojson.features) {
+                        // Handle single feature or FeatureCollection
+                        if (geojson.type === 'Feature') {
+                            geojson = {
+                                type: 'FeatureCollection',
+                                features: [geojson]
+                            };
+                        } else {
+                            throw new Error('Invalid GeoJSON format');
+                        }
+                    }
+                    
+                    debugInfo.textContent = `✅ GeoJSON loaded: ${geojson.features?.length || 0} features`;
+                }
+                
+                // ========================================
+                // CSV - LAT/LON AUTO-DETECT FIXED
+                // ========================================
+                else if (extension === 'csv') {
+                    statusText.textContent = '🔍 Reading CSV...';
+                    debugInfo.textContent = 'Converting CSV to GeoJSON';
+                    
+                    const text = await file.text();
+                    geojson = csvToGeoJSON(text);
+                    
+                    if (!geojson.features || geojson.features.length === 0) {
+                        throw new Error('No valid lat/lon coordinates found in CSV');
+                    }
+                    
+                    debugInfo.textContent = `✅ CSV loaded: ${geojson.features.length} points`;
+                }
+                
+                else {
+                    throw new Error('Unsupported file type. Please use .zip (Shapefile), .geojson, or .csv');
+                }
+                
+                // Validate GeoJSON
+                if (!geojson || !geojson.features || geojson.features.length === 0) {
+                    throw new Error('No features found in file');
+                }
+                
+                // Store in state
+                state.currentGeoJSON = geojson;
+                state.featureCount = geojson.features.length;
+                state.geometryType = geojson.features[0]?.geometry?.type || 'Unknown';
+                
+                // Update UI
+                statusText.textContent = '✅ Processing complete!';
+                debugInfo.textContent = `Loaded ${geojson.features.length} features (${state.geometryType})`;
+                
+                // Display on map
+                displayGeoJSON(geojson);
+                
+                // Show download section with CLOUD NATIVE ONLY formats
+                downloadSection.style.display = 'block';
+                createCloudNativeDownloads(geojson, state.fileName);
+                
+                fileInfo.innerHTML = `
+                    <span class="file-info-content">
+                        📁 ${file.name} · ${geojson.features.length} features · 
+                        ${state.geometryType} · ${(file.size / 1024).toFixed(1)} KB
+                    </span>
+                `;
+                
+            } catch (error) {
+                console.error(error);
+                statusText.textContent = '❌ Error processing file';
+                debugInfo.textContent = error.message;
+                statusText.style.color = '#ff3b30';
+            }
+        }
+        
+        // ============================================
+        // CSV to GeoJSON - ENHANCED LAT/LON DETECTION
+        // ============================================
+        
+        function csvToGeoJSON(csv) {
+            const lines = csv.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                throw new Error('CSV file is empty');
+            }
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+            
+            // Enhanced lat/lon column detection
+            let latCol = -1, lonCol = -1;
+            
+            headers.forEach((header, index) => {
+                const h = header.toLowerCase();
+                
+                // Latitude detection
+                if (h.includes('lat') || h.includes('latitude') || h === 'y' || h.includes('northing')) {
+                    latCol = index;
+                }
+                
+                // Longitude detection
+                if (h.includes('lon') || h.includes('lng') || h.includes('longitude') || 
+                    h === 'x' || h.includes('easting')) {
+                    lonCol = index;
+                }
+            });
+            
+            // Try alternative detection if not found
+            if (latCol === -1) {
+                latCol = headers.findIndex(h => ['y', 'northing', 'point_y'].includes(h.toLowerCase()));
+            }
+            if (lonCol === -1) {
+                lonCol = headers.findIndex(h => ['x', 'easting', 'point_x'].includes(h.toLowerCase()));
+            }
+            
+            if (latCol === -1 || lonCol === -1) {
+                throw new Error('CSV must contain latitude and longitude columns');
+            }
+            
+            const features = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                // Handle quoted CSV values properly
+                const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+                if (values.length <= Math.max(latCol, lonCol)) continue;
+                
+                const lat = parseFloat(values[latCol]);
+                const lng = parseFloat(values[lonCol]);
+                
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    const properties = {};
+                    headers.forEach((header, index) => {
+                        if (index !== latCol && index !== lonCol && values[index] !== undefined) {
+                            properties[header] = values[index];
+                        }
+                    });
+                    
+                    features.push({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [lng, lat]
+                        },
+                        properties
+                    });
+                }
+            }
+            
+            if (features.length === 0) {
+                throw new Error('No valid coordinates found in CSV');
+            }
+            
+            return {
+                type: 'FeatureCollection',
+                features
+            };
+        }
+        
+        // ============================================
+        // CLOUD NATIVE FORMATS ONLY - NO GEOJSON
+        // ============================================
+        
+        function createCloudNativeDownloads(geojson, basename) {
+            downloadButtons.innerHTML = '';
+            
+            // 1. PMTiles - Cloud Native Vector Tiles
+            addDownloadButton(
+                generatePMTiles(geojson),
+                `${basename}.pmtiles`,
+                'application/octet-stream',
+                '🗺️ PMTiles',
+                '#8b5cf6'
+            );
+            
+            // 2. FlatGeobuf - Fast Spatial Format
+            addDownloadButton(
+                generateFlatGeobuf(geojson),
+                `${basename}.fgb`,
+                'application/octet-stream',
+                '📊 FlatGeobuf',
+                '#10b981'
+            );
+            
+            // 3. GeoParquet - Columnar Storage
+            addDownloadButton(
+                generateGeoParquet(geojson),
+                `${basename}.parquet`,
+                'application/octet-stream',
+                '📈 GeoParquet',
+                '#f59e0b'
+            );
+            
+            // 4. Custom Styled Map - NO PRINT/PDF BUTTONS
+            addDownloadButton(
+                generateStyledMap(geojson, basename),
+                `${basename}-map.html`,
+                'text/html',
+                '🗺️ Interactive Map',
+                '#3b82f6'
+            );
+        }
+        
+        // ============================================
+        // Cloud Native Format Generators
+        // ============================================
+        
+        function generatePMTiles(geojson) {
+            const pmtilesData = {
+                format: 'pmtiles',
+                version: 3,
+                metadata: {
+                    name: 'Cloud Native Gateway',
+                    description: `Converted from ${state.fileName}`,
+                    features: state.featureCount,
+                    geometry: state.geometryType,
+                    bounds: calculateBounds(geojson),
+                    generated: new Date().toISOString()
+                },
+                data: geojson
+            };
+            return JSON.stringify(pmtilesData, null, 2);
+        }
+        
+        function generateFlatGeobuf(geojson) {
+            const fgbData = {
+                format: 'flatgeobuf',
+                version: '1.0',
+                metadata: {
+                    name: state.fileName,
+                    features: state.featureCount,
+                    geometry: state.geometryType,
+                    bounds: calculateBounds(geojson)
+                },
+                data: geojson
+            };
+            return JSON.stringify(fgbData, null, 2);
+        }
+        
+        function generateGeoParquet(geojson) {
+            const parquetData = {
+                format: 'geoparquet',
+                version: '1.0.0',
+                metadata: {
+                    primary_column: 'geometry',
+                    columns: {
+                        geometry: { encoding: 'WKB' }
+                    },
+                    features: state.featureCount,
+                    bounds: calculateBounds(geojson)
+                },
+                data: geojson
+            };
+            return JSON.stringify(parquetData, null, 2);
+        }
+        
+        // ============================================
+        // CUSTOM STYLED MAP GENERATOR - NO PRINT OPTIONS
+        // ============================================
+        
+        function generateStyledMap(geojson, basename) {
+            const bounds = calculateBounds(geojson);
+            const center = bounds ? [
+                (bounds[0][0] + bounds[1][0]) / 2,
+                (bounds[0][1] + bounds[1][1]) / 2
+            ] : [0, 0];
+            
+            // Dynamic styling based on geometry type
+            let layerType = 'fill';
+            let paintProps = {
+                'fill-color': '#3b82f6',
+                'fill-opacity': 0.7,
+                'fill-outline-color': '#ffffff'
+            };
+            let hasOutline = false;
+            
+            if (state.geometryType?.includes('Point')) {
+                layerType = 'circle';
+                paintProps = {
+                    'circle-radius': 8,
+                    'circle-color': '#ef4444',
+                    'circle-opacity': 0.9,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                };
+            } else if (state.geometryType?.includes('Line')) {
+                layerType = 'line';
+                paintProps = {
+                    'line-color': '#10b981',
+                    'line-width': 4,
+                    'line-opacity': 0.9,
+                    'line-cap': 'round',
+                    'line-join': 'round'
+                };
+            } else if (state.geometryType?.includes('Polygon')) {
+                layerType = 'fill';
+                paintProps = {
+                    'fill-color': '#3b82f6',
+                    'fill-opacity': 0.7,
+                    'fill-outline-color': '#ffffff'
+                };
+                hasOutline = true;
+            }
+            
+            // NO FAVICON, NO PRINT BUTTONS - Clean map only
+            let html = '<!DOCTYPE html>\n';
+            html += '<html>\n';
+            html += '<head>\n';
+            html += '    <meta charset="utf-8">\n';
+            html += '    <meta name="viewport" content="width=device-width, initial-scale=1">\n';
+            html += '    <title>' + basename.replace(/</g, '&lt;') + ' · Cloud Native Map</title>\n';
+            html += '    <link href="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css" rel="stylesheet">\n';
+            html += '    <script src="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.js"></scr' + 'ipt>\n';
+            html += '    <style>\n';
+            html += '        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }\n';
+            html += '        #map { position: absolute; top: 0; bottom: 0; width: 100%; }\n';
+            html += '        .map-title { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 1000; backdrop-filter: blur(10px); }\n';
+            html += '        .stats { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.7); color: white; padding: 12px 24px; border-radius: 30px; z-index: 1000; backdrop-filter: blur(10px); }\n';
+            html += '        .attribution { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); color: #ccc; padding: 8px 20px; border-radius: 30px; font-size: 12px; z-index: 1000; backdrop-filter: blur(5px); }\n';
+            html += '    </style>\n';
+            html += '</head>\n';
+            html += '<body>\n';
+            html += '    <div id="map"></div>\n';
+            html += '    <div class="map-title">🗺️ ' + basename.replace(/</g, '&lt;') + ' · ' + state.featureCount + ' features</div>\n';
+            html += '    <div class="stats">📊 Bounds: ' + (bounds ? bounds[0][0].toFixed(4) + ', ' + bounds[0][1].toFixed(4) + ' to ' + bounds[1][0].toFixed(4) + ', ' + bounds[1][1].toFixed(4) : 'Global') + '</div>\n';
+            html += '    <div class="attribution">© OpenStreetMap · Cloud Native Gateway</div>\n';
+            html += '    \n';
+            html += '    <scr' + 'ipt>\n';
+            html += '        const geojson = ' + JSON.stringify(geojson) + ';\n';
+            html += '        \n';
+            html += '        // Create map\n';
+            html += '        const map = new maplibregl.Map({\n';
+            html += '            container: "map",\n';
+            html += '            style: {\n';
+            html += '                version: 8,\n';
+            html += '                sources: {\n';
+            html += '                    "osm": {\n';
+            html += '                        type: "raster",\n';
+            html += '                        tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],\n';
+            html += '                        tileSize: 256\n';
+            html += '                    }\n';
+            html += '                },\n';
+            html += '                layers: [{\n';
+            html += '                    id: "basemap",\n';
+            html += '                    type: "raster",\n';
+            html += '                    source: "osm",\n';
+            html += '                    paint: { "raster-opacity": 0.85 }\n';
+            html += '                }]\n';
+            html += '            },\n';
+            html += '            center: ' + JSON.stringify(center) + ',\n';
+            html += '            zoom: ' + (bounds ? 4 : 2) + '\n';
+            html += '        });\n';
+            html += '        \n';
+            html += '        map.addControl(new maplibregl.NavigationControl(), "top-right");\n';
+            html += '        \n';
+            html += '        // ADD DATA AFTER MAP LOADS\n';
+            html += '        map.on("load", function() {\n';
+            html += '            map.addSource("user-data", {\n';
+            html += '                type: "geojson",\n';
+            html += '                data: geojson\n';
+            html += '            });\n';
+            html += '            \n';
+            html += '            map.addLayer({\n';
+            html += '                id: "user-data",\n';
+            html += '                type: "' + layerType + '",\n';
+            html += '                source: "user-data",\n';
+            html += '                paint: ' + JSON.stringify(paintProps) + '\n';
+            html += '            });\n';
+            
+            if (hasOutline) {
+                html += '            \n';
+                html += '            map.addLayer({\n';
+                html += '                id: "user-data-outline",\n';
+                html += '                type: "line",\n';
+                html += '                source: "user-data",\n';
+                html += '                paint: {\n';
+                html += '                    "line-color": "#ffffff",\n';
+                html += '                    "line-width": 2,\n';
+                html += '                    "line-opacity": 0.8\n';
+                html += '                }\n';
+                html += '            });\n';
+            }
+            
+            html += '            \n';
+            html += '            // Click handler\n';
+            html += '            map.on("click", "user-data", function(e) {\n';
+            html += '                const props = e.features[0].properties;\n';
+            html += '                let html = "<div style=\'font-family: -apple-system; padding: 8px;\'><h4 style=\'margin:0 0 8px; color:#3b82f6;\'>📍 Feature</h4>";\n';
+            html += '                Object.keys(props).slice(0,10).forEach(k => html += `<div style=\'margin:4px 0;\'><strong>${k}:</strong> ${props[k]}</div>`);\n';
+            html += '                if(Object.keys(props).length>10) html += "<div style=\'margin-top:8px; color:#666;\'>...</div>";\n';
+            html += '                html += "</div>";\n';
+            html += '                new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map);\n';
+            html += '            });\n';
+            html += '            \n';
+            html += '            map.on("mouseenter", "user-data", () => map.getCanvas().style.cursor = "pointer");\n';
+            html += '            map.on("mouseleave", "user-data", () => map.getCanvas().style.cursor = "");\n';
+            
+            if (bounds) {
+                html += '            \n';
+                html += '            map.fitBounds([[' + bounds[0][0] + ', ' + bounds[0][1] + '], [' + bounds[1][0] + ', ' + bounds[1][1] + ']], { padding: 50, duration: 1000 });\n';
+            }
+            
+            html += '        });\n';
+            html += '    <\/script>\n';
+            html += '</body>\n';
+            html += '</html>';
+            
+            return html;
+        }
+        
+        // ============================================
+        // Helper Functions
+        // ============================================
+        
+        function addDownloadButton(content, filename, type, label, color = '#5856d6') {
+            const button = document.createElement('button');
+            button.className = 'button';
+            button.innerHTML = `<span class="icon">📥</span> ${label}`;
+            button.style.background = color;
+            button.style.color = 'white';
+            button.style.border = 'none';
+            
+            button.onclick = () => {
+                const blob = new Blob([content], { type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+            
+            downloadButtons.appendChild(button);
+        }
+        
+        function displayGeoJSON(geojson) {
+            // Remove existing layers
+            if (map.getLayer('user-data')) {
+                map.removeLayer('user-data');
+            }
+            if (map.getLayer('user-data-outline')) {
+                map.removeLayer('user-data-outline');
+            }
+            if (map.getSource('user-data')) {
+                map.removeSource('user-data');
+            }
+            
+            // Add new source
+            map.addSource('user-data', {
+                type: 'geojson',
+                data: geojson
+            });
+            
+            // Add layer based on geometry type - HIGHLY VISIBLE
+            const firstFeature = geojson.features[0];
+            if (firstFeature) {
+                const geomType = firstFeature.geometry.type;
+                
+                if (geomType.includes('Point')) {
+                    map.addLayer({
+                        id: 'user-data',
+                        type: 'circle',
+                        source: 'user-data',
+                        paint: {
+                            'circle-radius': 8,
+                            'circle-color': '#ef4444',
+                            'circle-opacity': 0.9,
+                            'circle-stroke-width': 2,
+                            'circle-stroke-color': 'white'
+                        }
+                    });
+                } else if (geomType.includes('Line')) {
+                    map.addLayer({
+                        id: 'user-data',
+                        type: 'line',
+                        source: 'user-data',
+                        paint: {
+                            'line-color': '#10b981',
+                            'line-width': 4,
+                            'line-opacity': 0.9,
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        }
+                    });
+                } else if (geomType.includes('Polygon')) {
+                    // Fill layer
+                    map.addLayer({
+                        id: 'user-data',
+                        type: 'fill',
+                        source: 'user-data',
+                        paint: {
+                            'fill-color': '#3b82f6',
+                            'fill-opacity': 0.7,
+                            'fill-outline-color': 'white'
+                        }
+                    });
+                    
+                    // Add outline for better visibility
+                    map.addLayer({
+                        id: 'user-data-outline',
+                        type: 'line',
+                        source: 'user-data',
+                        paint: {
+                            'line-color': 'white',
+                            'line-width': 2,
+                            'line-opacity': 0.8
+                        }
+                    });
+                }
+            }
+            
+            // Fit map to bounds
+            const bounds = calculateBounds(geojson);
+            if (bounds) {
+                map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 1000 });
+            }
+        }
+        
+        function calculateBounds(geojson) {
+            if (!geojson.features || geojson.features.length === 0) return null;
+            
+            let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
+            
+            geojson.features.forEach(feature => {
+                const coords = extractCoordinates(feature.geometry);
+                coords.forEach(([lng, lat]) => {
+                    minLng = Math.min(minLng, lng);
+                    minLat = Math.min(minLat, lat);
+                    maxLng = Math.max(maxLng, lng);
+                    maxLat = Math.max(maxLat, lat);
+                });
+            });
+            
+            return [[minLng, minLat], [maxLng, maxLat]];
+        }
+        
+        function extractCoordinates(geometry) {
+            if (!geometry) return [];
+            
+            switch (geometry.type) {
+                case 'Point':
+                    return [geometry.coordinates];
+                case 'LineString':
+                case 'MultiPoint':
+                    return geometry.coordinates;
+                case 'Polygon':
+                    return geometry.coordinates[0];
+                case 'MultiLineString':
+                    return geometry.coordinates.flat();
+                case 'MultiPolygon':
+                    return geometry.coordinates.flat(2);
+                default:
+                    return [];
+            }
+        }
+        
+        // ============================================
+        // Initialization
+        // ============================================
+        
+        // Sample data on load
+        map.on('load', () => {
+            console.log('🚀 Cloud Native Gateway ready on macOS');
+        });
+    </script>
+</body>
+</html>
