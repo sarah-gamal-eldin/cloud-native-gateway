@@ -1,7 +1,7 @@
 # 🌍 Cloud Native Gateway
 
 **Browser-based GIS file converter for cloud-native formats**  
-macOS Native · Dark Edition · Zero Server Required
+Zero Server Required
 
 ![Cloud Native Gateway](https://img.shields.io/badge/Cloud%20Native-Gateway-3b82f6)
 ![macOS](https://img.shields.io/badge/macOS-Silicon%20%7C%20Intel-9ca3af)
