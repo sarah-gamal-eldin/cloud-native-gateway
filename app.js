@@ -36,14 +36,14 @@ async function initGDAL() {
     try {
         updateStatus('🔄 Loading GDAL3.js from CDN...', 10);
         debugInfo.innerHTML = 'Downloading GDAL3.js package...';
-        
+
         // CRITICAL: This is the WORKING CDN initialization
         state.gdal = await GDAL3.initialize({
             path: 'https://cdn.jsdelivr.net/npm/gdal3.js@3.0.0/dist/package',
             useWorker: false,  // macOS Safari compatibility
             memoryLimit: 1024 * 1024 * 1024  // 1GB
         });
-        
+
         if (state.gdal && state.gdal.version) {
             updateStatus(`✅ GDAL3.js v${state.gdal.version} ready`, 20);
             gdalStatus.className = 'success-badge';
@@ -53,14 +53,14 @@ async function initGDAL() {
         } else {
             throw new Error('GDAL initialization returned null');
         }
-        
+
     } catch (error) {
         console.error('GDAL init failed:', error);
         updateStatus('❌ GDAL init failed: ' + error.message, 'error');
         gdalStatus.className = 'error-badge';
         gdalStatus.innerHTML = '❌ GDAL Failed';
         debugInfo.innerHTML = `Error: ${error.message}. Using fallback mode.`;
-        
+
         // Set fallback GDAL object
         state.gdal = {
             version: 'fallback',
@@ -77,9 +77,9 @@ async function initGDAL() {
 // ============================================
 function initMap() {
     if (state.mapInitialized) return;
-    
+
     mapPreview.innerHTML = '<div id="map" style="height: 400px; width: 100%;"></div>';
-    
+
     state.map = new maplibregl.Map({
         container: 'map',
         style: {
@@ -100,9 +100,9 @@ function initMap() {
         center: [0, 0],
         zoom: 2
     });
-    
+
     state.map.addControl(new maplibregl.NavigationControl(), 'top-right');
-    
+
     state.map.on('load', () => {
         state.mapInitialized = true;
         console.log('✅ Map ready');
@@ -115,30 +115,30 @@ function initMap() {
 async function processFile(file) {
     showStatusPanel();
     updateStatus(`📂 Loading: ${file.name}`, 30);
-    
+
     state.currentFile = file;
     downloadButtons.innerHTML = '';
-    
+
     const extension = file.name.split('.').pop().toLowerCase();
-    
+
     try {
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
-        
+
         // Try GDAL first, fallback to alternatives
         if (state.gdal && state.gdal.version !== 'fallback') {
             await processWithGDAL(uint8Array, file.name, extension);
         } else {
             await processWithFallback(file, extension);
         }
-        
+
         updateStatus('✅ Processing complete!', 100);
         outputPanel.style.display = 'block';
-        
+
     } catch (error) {
         console.error('Processing error:', error);
         updateStatus(`❌ Error: ${error.message}`, 'error');
-        
+
         // Try fallback on error
         try {
             await processWithFallback(file, extension);
@@ -155,55 +155,55 @@ async function processFile(file) {
 // ============================================
 async function processWithGDAL(data, filename, extension) {
     updateStatus('🔍 Processing with GDAL3.js...', 40);
-    
+
     // GeoPackage
     if (extension === 'gpkg') {
         const dataset = await state.gdal.open(data);
         const layers = await dataset.getLayers();
-        
+
         debugInfo.innerHTML = `📊 GeoPackage: ${layers.length} layer(s)`;
-        
+
         // Load first layer
         const features = await dataset.executeSQL(`
             SELECT *, geom FROM "${layers[0].name}" LIMIT 5000
         `);
-        
+
         const geojson = await dataset.toGeoJSON(features, {
             targetSRS: 'EPSG:4326'
         });
-        
+
         state.currentGeoJSON = geojson;
         createDownloads(geojson, filename.replace('.gpkg', ''));
         displayGeoJSONOnMap(geojson, layers[0].name);
     }
-    
+
     // Shapefile
     else if (extension === 'zip') {
         const dataset = await state.gdal.open(data);
         const layer = await dataset.getLayer(0);
         const features = await dataset.executeSQL(`SELECT *, geom FROM "${layer.name}" LIMIT 5000`);
-        
+
         const geojson = await dataset.toGeoJSON(features, {
             targetSRS: 'EPSG:4326'
         });
-        
+
         state.currentGeoJSON = geojson;
         createDownloads(geojson, filename.replace('.zip', ''));
         displayGeoJSONOnMap(geojson, 'Shapefile');
     }
-    
+
     // GeoTIFF
     else if (['tif', 'tiff'].includes(extension)) {
         const dataset = await state.gdal.open(data);
-        
+
         // Export as COG
         const cogData = await state.gdal.export(dataset, 'COG', {
             options: ['COMPRESS=DEFLATE', 'TILING_SCHEME=GoogleMapsCompatible']
         });
-        
+
         const cogBlob = new Blob([cogData]);
         createDownloadButton(cogBlob, filename.replace('.tif', '.cog.tif'), 'Cloud-Optimized GeoTIFF');
-        
+
         // Show bounds on map
         const info = await dataset.getInfo();
         if (info.wgs84Extent) {
@@ -220,7 +220,7 @@ async function processWithGDAL(data, filename, extension) {
 // ============================================
 async function processWithFallback(file, extension) {
     updateStatus('🔄 Using fallback processor...', 50);
-    
+
     // Shapefile ZIP with shp.js
     if (extension === 'zip') {
         if (window.shp) {
@@ -232,23 +232,23 @@ async function processWithFallback(file, extension) {
             state.currentGeoJSON = generateSampleGeoJSON();
         }
     }
-    
+
     // GeoJSON
     else if (extension === 'geojson') {
         const text = await file.text();
         state.currentGeoJSON = JSON.parse(text);
     }
-    
+
     // CSV
     else if (extension === 'csv') {
         state.currentGeoJSON = await csvToGeoJSON(file);
     }
-    
+
     // Everything else - generate sample
     else {
         state.currentGeoJSON = generateSampleGeoJSON();
     }
-    
+
     if (state.currentGeoJSON) {
         createDownloads(state.currentGeoJSON, file.name.split('.')[0]);
         displayGeoJSONOnMap(state.currentGeoJSON, 'Data');
@@ -263,31 +263,31 @@ async function csvToGeoJSON(file) {
     const text = await file.text();
     const lines = text.split('\n').filter(line => line.trim());
     const headers = lines[0].split(',').map(h => h.trim());
-    
+
     // Find lat/lon columns
-    const latCol = headers.findIndex(h => 
+    const latCol = headers.findIndex(h =>
         h.toLowerCase().includes('lat') || h.toLowerCase().includes('latitude')
     );
-    const lonCol = headers.findIndex(h => 
+    const lonCol = headers.findIndex(h =>
         h.toLowerCase().includes('lon') || h.toLowerCase().includes('lng') || h.toLowerCase().includes('longitude')
     );
-    
+
     if (latCol === -1 || lonCol === -1) {
         return generateSampleGeoJSON();
     }
-    
+
     const features = [];
     for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
         const lat = parseFloat(values[latCol]);
         const lon = parseFloat(values[lonCol]);
-        
+
         if (!isNaN(lat) && !isNaN(lon)) {
             const properties = {};
             headers.forEach((header, idx) => {
                 properties[header] = values[idx];
             });
-            
+
             features.push({
                 type: 'Feature',
                 geometry: {
@@ -298,7 +298,7 @@ async function csvToGeoJSON(file) {
             });
         }
     }
-    
+
     return {
         type: 'FeatureCollection',
         features
@@ -346,19 +346,19 @@ function generateSampleGeoJSON() {
 // ============================================
 function createDownloads(geojson, basename) {
     downloadButtons.innerHTML = '';
-    
+
     // GeoJSON
-    const geojsonBlob = new Blob([JSON.stringify(geojson, null, 2)], 
+    const geojsonBlob = new Blob([JSON.stringify(geojson, null, 2)],
         { type: 'application/json' });
     createDownloadButton(geojsonBlob, `${basename}.geojson`, 'GeoJSON');
-    
+
     // FlatGeobuf (simulated)
     const fgbBlob = new Blob([JSON.stringify({
         format: 'FlatGeobuf',
         data: geojson
     })], { type: 'application/octet-stream' });
     createDownloadButton(fgbBlob, `${basename}.fgb`, 'FlatGeobuf');
-    
+
     // PMTiles (simulated)
     const pmtilesBlob = new Blob([JSON.stringify({
         format: 'PMTiles',
@@ -391,7 +391,7 @@ function displayGeoJSONOnMap(geojson, layerName) {
         setTimeout(() => displayGeoJSONOnMap(geojson, layerName), 500);
         return;
     }
-    
+
     // Remove existing layers
     ['user-points', 'user-lines', 'user-polygons'].forEach(layer => {
         if (state.map.getLayer(layer)) state.map.removeLayer(layer);
@@ -399,19 +399,19 @@ function displayGeoJSONOnMap(geojson, layerName) {
     if (state.map.getSource('user-data')) {
         state.map.removeSource('user-data');
     }
-    
+
     // Add new data
     state.map.addSource('user-data', {
         type: 'geojson',
         data: geojson
     });
-    
+
     // Detect geometry type
     const firstFeature = geojson.features?.[0];
     if (!firstFeature) return;
-    
+
     const geomType = firstFeature.geometry.type;
-    
+
     if (geomType.includes('Point')) {
         state.map.addLayer({
             id: 'user-points',
@@ -425,22 +425,60 @@ function displayGeoJSONOnMap(geojson, layerName) {
                 'circle-stroke-color': 'white'
             }
         });
-    }
-    
-    // Fit bounds
-    let bounds = null;
-    geojson.features.forEach(feature => {
-        if (feature.geometry.type === 'Point') {
-            const [lng, lat] = feature.geometry.coordinates;
-            if (!bounds) {
-                bounds = new maplibregl.LngLatBounds([lng, lat], [lng, lat]);
-            } else {
-                bounds.extend([lng, lat]);
+    } else if (geomType.includes('Polygon')) {
+        state.map.addLayer({
+            id: 'user-polygons',
+            type: 'fill',
+            source: 'user-data',
+            paint: {
+                'fill-color': '#3b82f6',
+                'fill-opacity': 0.7,
+                'fill-outline-color': '#ffffff'
             }
+        });
+        state.map.addLayer({
+            id: 'user-lines',
+            type: 'line',
+            source: 'user-data',
+            paint: {
+                'line-color': '#ffffff',
+                'line-width': 2,
+                'line-opacity': 0.8
+            }
+        });
+    } else if (geomType.includes('Line')) {
+        state.map.addLayer({
+            id: 'user-lines',
+            type: 'line',
+            source: 'user-data',
+            paint: {
+                'line-color': '#3b82f6',
+                'line-width': 3,
+                'line-opacity': 0.9
+            }
+        });
+    }
+
+    // Fit bounds — handle all geometry types
+    const bounds = new maplibregl.LngLatBounds();
+    geojson.features.forEach(feature => {
+        const geom = feature.geometry;
+        if (geom.type === 'Point') {
+            bounds.extend(geom.coordinates);
+        } else if (geom.type === 'MultiPoint') {
+            geom.coordinates.forEach(c => bounds.extend(c));
+        } else if (geom.type === 'LineString') {
+            geom.coordinates.forEach(c => bounds.extend(c));
+        } else if (geom.type === 'MultiLineString') {
+            geom.coordinates.forEach(line => line.forEach(c => bounds.extend(c)));
+        } else if (geom.type === 'Polygon') {
+            geom.coordinates[0].forEach(c => bounds.extend(c));
+        } else if (geom.type === 'MultiPolygon') {
+            geom.coordinates.forEach(poly => poly[0].forEach(c => bounds.extend(c)));
         }
     });
-    
-    if (bounds) {
+
+    if (!bounds.isEmpty()) {
         state.map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
     }
 }
@@ -453,11 +491,11 @@ document.getElementById('publishGistBtn').addEventListener('click', async () => 
         alert('Please load a file first');
         return;
     }
-    
+
     const mapHTML = generateMapHTML(state.currentGeoJSON);
     const blob = new Blob([mapHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'cloud-native-map.html';
@@ -470,11 +508,11 @@ document.getElementById('downloadMapBtn').addEventListener('click', () => {
         alert('Please load a file first');
         return;
     }
-    
+
     const mapHTML = generateMapHTML(state.currentGeoJSON);
     const blob = new Blob([mapHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'cloud-native-map.html';
@@ -528,33 +566,77 @@ function generateMapHTML(geojson) {
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
         
         map.on('load', () => {
-            map.addLayer({
-                id: 'user-points',
-                type: 'circle',
-                source: 'user-data',
-                paint: {
-                    'circle-radius': 6,
-                    'circle-color': '#ff6b6b',
-                    'circle-opacity': 0.9,
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': 'white'
-                }
-            });
-            
-            // Fit bounds
-            let bounds = null;
-            geojson.features.forEach(feature => {
-                if (feature.geometry.type === 'Point') {
-                    const [lng, lat] = feature.geometry.coordinates;
-                    if (!bounds) {
-                        bounds = new maplibregl.LngLatBounds([lng, lat], [lng, lat]);
-                    } else {
-                        bounds.extend([lng, lat]);
+            // Detect geometry type and add appropriate layers
+            const firstFeature = geojson.features?.[0];
+            const geomType = firstFeature ? firstFeature.geometry.type : 'Point';
+
+            if (geomType.includes('Point')) {
+                map.addLayer({
+                    id: 'user-points',
+                    type: 'circle',
+                    source: 'user-data',
+                    paint: {
+                        'circle-radius': 6,
+                        'circle-color': '#ff6b6b',
+                        'circle-opacity': 0.9,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': 'white'
                     }
+                });
+            } else if (geomType.includes('Polygon')) {
+                map.addLayer({
+                    id: 'user-polygons',
+                    type: 'fill',
+                    source: 'user-data',
+                    paint: {
+                        'fill-color': '#3b82f6',
+                        'fill-opacity': 0.7,
+                        'fill-outline-color': '#ffffff'
+                    }
+                });
+                map.addLayer({
+                    id: 'user-lines',
+                    type: 'line',
+                    source: 'user-data',
+                    paint: {
+                        'line-color': '#ffffff',
+                        'line-width': 2,
+                        'line-opacity': 0.8
+                    }
+                });
+            } else if (geomType.includes('Line')) {
+                map.addLayer({
+                    id: 'user-lines',
+                    type: 'line',
+                    source: 'user-data',
+                    paint: {
+                        'line-color': '#3b82f6',
+                        'line-width': 3,
+                        'line-opacity': 0.9
+                    }
+                });
+            }
+
+            // Fit bounds — handle all geometry types
+            const bounds = new maplibregl.LngLatBounds();
+            geojson.features.forEach(feature => {
+                const geom = feature.geometry;
+                if (geom.type === 'Point') {
+                    bounds.extend(geom.coordinates);
+                } else if (geom.type === 'MultiPoint') {
+                    geom.coordinates.forEach(c => bounds.extend(c));
+                } else if (geom.type === 'LineString') {
+                    geom.coordinates.forEach(c => bounds.extend(c));
+                } else if (geom.type === 'MultiLineString') {
+                    geom.coordinates.forEach(line => line.forEach(c => bounds.extend(c)));
+                } else if (geom.type === 'Polygon') {
+                    geom.coordinates[0].forEach(c => bounds.extend(c));
+                } else if (geom.type === 'MultiPolygon') {
+                    geom.coordinates.forEach(poly => poly[0].forEach(c => bounds.extend(c)));
                 }
             });
-            
-            if (bounds) {
+
+            if (!bounds.isEmpty()) {
                 map.fitBounds(bounds, { padding: 50 });
             }
         });
