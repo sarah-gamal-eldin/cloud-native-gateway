@@ -1,0 +1,25 @@
+{
+  "name": "cloud-native-gateway",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "deploy": "./deploy.sh"
+  },
+  "description": "Cloud Native Gateway - Browser-based GIS converter",
+  "main": "index.html",
+  "keywords": [
+    "gis",
+    "gdal",
+    "pmtiles",
+    "flatgeobuf"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "gdal3.js": "^2.8.1",
+    "selfsigned": "^5.5.0"
+  }
+}
