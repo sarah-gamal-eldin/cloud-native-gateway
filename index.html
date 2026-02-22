@@ -394,7 +394,10 @@ async function initGDAL() {
     await new Promise(r => setTimeout(r, 100));
   if (typeof window.initGdalJs !== 'function') throw new Error('initGdalJs not found');
   setProgress(15, 'Initialising GDAL…', 'gdal3WebAssembly.wasm');
-  const inst = await window.initGdalJs({ path: 'lib/package/', useWorker: false });
+  // Ensure path resolves correctly on GitHub Pages (includes repo name)
+  const basePath = (location.pathname.substring(0, location.pathname.lastIndexOf("/")) + "/");
+  const gdalPath = basePath + 'lib/package/';
+  const inst = await window.initGdalJs({ path: gdalPath, useWorker: false });
   if (!inst) throw new Error('null');
   state.gdal = typeof inst.open === 'function' ? inst : inst.GDAL3 ?? inst;
   state.gdalAvailable = true;
